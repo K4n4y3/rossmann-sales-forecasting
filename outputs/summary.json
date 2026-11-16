@@ -1,0 +1,490 @@
+{
+  "data": {
+    "rows": 1017209,
+    "stores": 1115,
+    "date_min": "2013-01-01",
+    "date_max": "2015-07-31",
+    "closed_share": 0.16989330609540418,
+    "open_zero_sales": 54,
+    "extreme_outliers": 1113,
+    "stores_with_gap": 181,
+    "mean_sales_open": 6955.959133664481,
+    "median_sales_open": 6369.0,
+    "total_sales": 5873180623.0
+  },
+  "holdout": {
+    "start": "2015-06-20",
+    "end": "2015-07-31",
+    "days": 42
+  },
+  "metrics_F1": {
+    "Seasonal naive (last same weekday)": {
+      "RMSPE": 0.3494245459123711,
+      "sMAPE": 20.19515732189179,
+      "MAE": 1484.5310064048458,
+      "Bias_%": 13.592518421153864,
+      "train_seconds": 0.3,
+      "n_models": 1115
+    },
+    "Store x weekday x promo profile": {
+      "RMSPE": 0.13467862821225804,
+      "sMAPE": 9.772226819507585,
+      "MAE": 677.7016554976176,
+      "Bias_%": -1.0283355567238828,
+      "train_seconds": 0.1,
+      "n_models": 1115
+    },
+    "Per-store ridge regression": {
+      "RMSPE": 0.1245378468171147,
+      "sMAPE": 8.917320268430046,
+      "MAE": 622.2624847077251,
+      "Bias_%": -0.016862533744100988,
+      "train_seconds": 6.8,
+      "n_models": 1115
+    },
+    "Per-store LightGBM": {
+      "RMSPE": 0.11492690312571593,
+      "sMAPE": 8.040274585070492,
+      "MAE": 555.2965277051256,
+      "Bias_%": 0.5017689520842282,
+      "train_seconds": 132.2,
+      "n_models": 1115
+    },
+    "Global LightGBM": {
+      "RMSPE": 0.10728511265711616,
+      "sMAPE": 7.66116628017342,
+      "MAE": 524.7485702385122,
+      "Bias_%": 0.43262153991966307,
+      "train_seconds": 243.8,
+      "n_models": 1
+    },
+    "Per-store SARIMAX (ARMA errors)": {
+      "RMSPE": 0.13998626511090273,
+      "sMAPE": 10.417672399878612,
+      "MAE": 740.9300721460523,
+      "Bias_%": -1.154625274108035,
+      "train_seconds": 238.7,
+      "n_models": 150
+    }
+  },
+  "fold_mean_RMSPE": {
+    "Global LightGBM": 0.09945361406559705,
+    "Per-store LightGBM": 0.11641348904631797,
+    "Per-store SARIMAX (ARMA errors)": 0.13998626511090273,
+    "Per-store ridge regression": 0.11719620322602571,
+    "Seasonal naive (last same weekday)": 0.31512631282521814,
+    "Store x weekday x promo profile": 0.1443221444571842
+  },
+  "global_info": {
+    "best_iter": 1879,
+    "n_trees": 1973,
+    "correction": 1.0124999999999986,
+    "valid_RMSPE": 0.09489907854976162,
+    "valid_RMSPE_corrected": 0.09420181319481497,
+    "features": [
+      "Store",
+      "DayOfWeek",
+      "Day",
+      "Month",
+      "Year",
+      "WeekOfYear",
+      "DayOfYear",
+      "t",
+      "Promo",
+      "promo_day",
+      "PromoNextWeek",
+      "PromoLastWeek",
+      "promo2_active",
+      "promo2_weeks",
+      "is_promo2_month",
+      "StateHoliday_code",
+      "SchoolHoliday",
+      "days_to_holiday",
+      "days_since_holiday",
+      "days_to_christmas",
+      "days_since_christmas",
+      "days_to_easter",
+      "days_since_easter",
+      "days_to_school_hol",
+      "days_since_school_hol",
+      "holidays_this_week",
+      "holidays_next_week",
+      "days_since_closed",
+      "days_until_closed",
+      "prev_closed_len",
+      "next_closed_len",
+      "StoreType_code",
+      "Assortment_code",
+      "log_comp_distance",
+      "comp_open_months",
+      "comp_active",
+      "Promo2",
+      "store_mean_log",
+      "store_dow_dev",
+      "store_promo_lift",
+      "store_mean_log_cust",
+      "store_sunday_open"
+    ]
+  },
+  "per_store_lgb_info": {
+    "n_rounds": 300,
+    "correction": 0.9899999999999991,
+    "valid_RMSPE": 0.10613618790987936,
+    "checkpoint_scores": {
+      "25": 0.13721988915601946,
+      "50": 0.1154411482587029,
+      "75": 0.10987919238099791,
+      "100": 0.10785923003269604,
+      "150": 0.10681542235765855,
+      "200": 0.10628817182517497,
+      "300": 0.10613618790987936,
+      "400": 0.10620814190317317,
+      "600": 0.10660438669920885
+    }
+  },
+  "global_corrected_holdout": {
+    "RMSPE": 0.11133286961740783,
+    "sMAPE": 7.834449368210075,
+    "MAPE": 8.101790683899441,
+    "MAE": 535.4502708815285,
+    "Bias_%": 1.6880293091684955
+  },
+  "sarimax_sample_stores": [
+    8,
+    34,
+    39,
+    41,
+    45,
+    64,
+    66,
+    69,
+    79,
+    84,
+    87,
+    92,
+    100,
+    103,
+    125,
+    126,
+    135,
+    149,
+    152,
+    158,
+    167,
+    169,
+    181,
+    197,
+    198,
+    214,
+    227,
+    237,
+    238,
+    255,
+    261,
+    267,
+    278,
+    299,
+    306,
+    307,
+    329,
+    335,
+    336,
+    345,
+    358,
+    366,
+    371,
+    377,
+    383,
+    384,
+    400,
+    411,
+    421,
+    424,
+    426,
+    442,
+    444,
+    449,
+    452,
+    454,
+    458,
+    460,
+    476,
+    478,
+    481,
+    483,
+    486,
+    494,
+    496,
+    504,
+    507,
+    508,
+    514,
+    543,
+    547,
+    555,
+    559,
+    590,
+    599,
+    608,
+    615,
+    617,
+    620,
+    629,
+    634,
+    635,
+    639,
+    662,
+    665,
+    678,
+    679,
+    688,
+    696,
+    700,
+    701,
+    704,
+    707,
+    713,
+    714,
+    720,
+    726,
+    727,
+    736,
+    746,
+    749,
+    759,
+    762,
+    764,
+    765,
+    772,
+    773,
+    774,
+    791,
+    810,
+    818,
+    825,
+    827,
+    831,
+    834,
+    837,
+    841,
+    843,
+    851,
+    853,
+    860,
+    861,
+    874,
+    875,
+    879,
+    888,
+    891,
+    905,
+    916,
+    917,
+    933,
+    935,
+    947,
+    949,
+    952,
+    954,
+    982,
+    984,
+    996,
+    998,
+    1037,
+    1066,
+    1073,
+    1079,
+    1087,
+    1089,
+    1092,
+    1093,
+    1099,
+    1102
+  ],
+  "promo_counterfactual": {
+    "promo_day_uplift_pct": 36.823768530486966,
+    "promo_day_uplift_flag_only_pct": 24.092785485542876,
+    "promo_days_incremental_eur": 38090316.99016625,
+    "promo_days_incremental_share_pct": 13.491433238487451,
+    "holdout_forecast_eur": 282329655.54396963,
+    "n_promo_store_days": 16701
+  },
+  "effects": {
+    "meta": {
+      "n_obs": 844338,
+      "r2_within": 0.565311576646613,
+      "target": "Sales",
+      "interactions": null
+    },
+    "promo_decomposition": {
+      "Sales": {
+        "effect_pct": 37.941390581362896,
+        "ci_low_pct": 36.22794326628207,
+        "ci_high_pct": 39.67638928767203
+      },
+      "Customers": {
+        "effect_pct": 20.038514191423175,
+        "ci_low_pct": 19.0113710626443,
+        "ci_high_pct": 21.074522212670544
+      },
+      "SalesPerCustomer": {
+        "effect_pct": 14.914276897321699,
+        "ci_low_pct": 14.355861072020693,
+        "ci_high_pct": 15.475419545988146
+      }
+    },
+    "main": {
+      "Promo": {
+        "effect_pct": 37.941390581362896,
+        "ci_low_pct": 36.22794326628207,
+        "ci_high_pct": 39.67638928767203,
+        "p": 0.0
+      },
+      "SchoolHoliday": {
+        "effect_pct": 1.1243217523179805,
+        "ci_low_pct": 0.07985769242477847,
+        "ci_high_pct": 2.1796861591697247,
+        "p": 0.034801566517330025
+      },
+      "Promo2 month": {
+        "effect_pct": -0.266401094076385,
+        "ci_low_pct": -0.6466284135120404,
+        "ci_high_pct": 0.11528136283609491,
+        "p": 0.17106946716249782
+      },
+      "Open on state holiday": {
+        "effect_pct": -9.954852911595536,
+        "ci_low_pct": -22.397412509730486,
+        "ci_high_pct": 4.482708327078178,
+        "p": 0.16696737934880423
+      },
+      "1 day(s) before holiday": {
+        "effect_pct": 19.32347055275878,
+        "ci_low_pct": 15.129210469478881,
+        "ci_high_pct": 23.670531281282912,
+        "p": 3.785892641684384e-22
+      },
+      "1 day(s) after holiday": {
+        "effect_pct": 23.117091516979606,
+        "ci_low_pct": 19.643517965363767,
+        "ci_high_pct": 26.691512263860794,
+        "p": 5.001192345160094e-46
+      },
+      "2 day(s) before holiday": {
+        "effect_pct": 7.140213206490342,
+        "ci_low_pct": 4.29103930146415,
+        "ci_high_pct": 10.067224977506296,
+        "p": 5.296996249600859e-07
+      },
+      "2 day(s) after holiday": {
+        "effect_pct": 4.198162146862527,
+        "ci_low_pct": 1.55670214861936,
+        "ci_high_pct": 6.9083257439297885,
+        "p": 0.001694938048850323
+      },
+      "3 day(s) before holiday": {
+        "effect_pct": 1.3387317529126586,
+        "ci_low_pct": -1.9070814478592268,
+        "ci_high_pct": 4.691946216587195,
+        "p": 0.42332337532707753
+      },
+      "3 day(s) after holiday": {
+        "effect_pct": 6.234463777920274,
+        "ci_low_pct": 3.6542425853805405,
+        "ci_high_pct": 8.878913324614878,
+        "p": 1.4290855167852057e-06
+      },
+      "xmas_D-1": {
+        "effect_pct": -26.504557989909294,
+        "ci_low_pct": -30.490241826234964,
+        "ci_high_pct": -22.290335369094738,
+        "p": 2.6190988358549017e-27
+      },
+      "xmas_D-2": {
+        "effect_pct": 69.27782406288065,
+        "ci_low_pct": 61.58758580971957,
+        "ci_high_pct": 77.33405432027915,
+        "p": 4.357798076213191e-109
+      },
+      "xmas_D-3": {
+        "effect_pct": 50.45267525400507,
+        "ci_low_pct": 42.64480520568448,
+        "ci_high_pct": 58.68792037990778,
+        "p": 5.170786766440011e-51
+      },
+      "xmas_D-4": {
+        "effect_pct": 40.438120689325864,
+        "ci_low_pct": 34.053869360214996,
+        "ci_high_pct": 47.12641893053095,
+        "p": 2.002744740264135e-46
+      },
+      "xmas_D-5": {
+        "effect_pct": 23.796222508694022,
+        "ci_low_pct": 16.92166418228083,
+        "ci_high_pct": 31.074979257305312,
+        "p": 2.4234859114783996e-13
+      },
+      "xmas_D-6": {
+        "effect_pct": 13.387757468300254,
+        "ci_low_pct": 3.177165450171082,
+        "ci_high_pct": 24.60880745846041,
+        "p": 0.009065075802425961
+      },
+      "xmas_D-7": {
+        "effect_pct": 17.488803934026677,
+        "ci_low_pct": 9.907220719645316,
+        "ci_high_pct": 25.59337739108929,
+        "p": 2.1844379236297167e-06
+      },
+      "xmas_D+2": {
+        "effect_pct": -6.118165206888204,
+        "ci_low_pct": -18.51387473602939,
+        "ci_high_pct": 8.163185764070068,
+        "p": 0.3822070620821434
+      },
+      "xmas_D+3": {
+        "effect_pct": -15.454920273348282,
+        "ci_low_pct": -19.768572192305676,
+        "ci_high_pct": -10.909344364174434,
+        "p": 3.3164758500407695e-10
+      },
+      "xmas_D+4": {
+        "effect_pct": -10.28106741589686,
+        "ci_low_pct": -15.561494010132993,
+        "ci_high_pct": -4.670425303393966,
+        "p": 0.0004558720266374398
+      },
+      "xmas_D+5": {
+        "effect_pct": 1.0546832056706146,
+        "ci_low_pct": -4.1150403886289215,
+        "ci_high_pct": 6.503137084154265,
+        "p": 0.6953649378664919
+      },
+      "xmas_D+6": {
+        "effect_pct": -49.82541163816639,
+        "ci_low_pct": -52.550505669871505,
+        "ci_high_pct": -46.943811460579774,
+        "p": 1.9400386811418927e-129
+      },
+      "Reopening (first week after closure >= 5 days)": {
+        "effect_pct": 69.17439441970701,
+        "ci_low_pct": 52.487237903081365,
+        "ci_high_pct": 87.68767879096235,
+        "p": 3.314660640709327e-23
+      },
+      "Last week before closure >= 5 days": {
+        "effect_pct": -23.34406427881419,
+        "ci_low_pct": -29.998013898664176,
+        "ci_high_pct": -16.057631953696273,
+        "p": 9.572065985328522e-09
+      }
+    }
+  },
+  "per_store_global_win_share": 0.6645739910313901,
+  "submission": {
+    "rows": 41088,
+    "n_trees": 2067,
+    "mean_sales_open": 6907.679112020146
+  },
+  "runtime_minutes": 14.731462284766668
+}

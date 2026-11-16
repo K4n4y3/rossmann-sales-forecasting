@@ -1,0 +1,17 @@
+# Kaggle data is not redistributed - see data/README.md
+data/raw/*
+!data/raw/.gitkeep
+data/*.parquet
+
+# trained models (large, reproducible)
+outputs/models/
+
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+.env
+kaggle.json
+.DS_Store
+outputs/cache/
+outputs/quick/
