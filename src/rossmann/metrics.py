@@ -40,15 +40,36 @@ def mae(y, yhat) -> float:
     return float(np.mean(np.abs(y - yhat)))
 
 
+def rmse(y, yhat) -> float:
+    y, yhat = _mask(y, yhat)
+    return float(np.sqrt(np.mean((y - yhat) ** 2)))
+
+
+def mase(y, yhat, scale) -> float:
+    """Mean Absolute Scaled Error (Hyndman & Koehler 2006) for many series.
+
+    ``scale`` is, for every row, the in-sample MAE of the seasonal-naive (lag-7)
+    forecast of that row's store on its training data.  MASE < 1 means the
+    forecast beats an in-sample weekly seasonal-naive forecast.
+    """
+    y = np.asarray(y, dtype="float64")
+    m = y > 0
+    e = np.abs(y[m] - np.asarray(yhat, dtype="float64")[m])
+    return float(np.mean(e / np.asarray(scale, dtype="float64")[m]))
+
+
 def bias_pct(y, yhat) -> float:
     """Total forecast bias in percent of actual sales (+ = over-forecast)."""
     y, yhat = _mask(y, yhat)
     return float(100 * (yhat.sum() - y.sum()) / y.sum())
 
 
-def score(y, yhat) -> dict:
-    return {"RMSPE": rmspe(y, yhat), "sMAPE": smape(y, yhat), "MAPE": mape(y, yhat),
-            "MAE": mae(y, yhat), "Bias_%": bias_pct(y, yhat)}
+def score(y, yhat, scale=None) -> dict:
+    out = {"RMSPE": rmspe(y, yhat), "sMAPE": smape(y, yhat), "MAPE": mape(y, yhat),
+           "MAE": mae(y, yhat), "RMSE": rmse(y, yhat), "Bias_%": bias_pct(y, yhat)}
+    if scale is not None:
+        out["MASE"] = mase(y, yhat, scale)
+    return out
 
 
 def score_by(df: pd.DataFrame, pred_col: str, by: str | list[str], y_col: str = "Sales") -> pd.DataFrame:

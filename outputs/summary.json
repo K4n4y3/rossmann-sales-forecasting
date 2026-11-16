@@ -18,10 +18,24 @@
     "days": 42
   },
   "metrics_F1": {
+    "Naive (last observed day)": {
+      "RMSPE": 0.39346040186640036,
+      "sMAPE": 23.407897738950734,
+      "MAPE": 27.56542222970212,
+      "MAE": 1622.6212452211905,
+      "RMSE": 2059.0439600739237,
+      "MASE": 0.8221931440204943,
+      "Bias_%": 8.91146642841035,
+      "train_seconds": 0.1,
+      "n_models": 1115
+    },
     "Seasonal naive (last same weekday)": {
       "RMSPE": 0.3494245459123711,
       "sMAPE": 20.19515732189179,
+      "MAPE": 24.190821628010276,
       "MAE": 1484.5310064048458,
+      "RMSE": 2083.9730340203555,
+      "MASE": 0.7429664855993132,
       "Bias_%": 13.592518421153864,
       "train_seconds": 0.3,
       "n_models": 1115
@@ -29,7 +43,10 @@
     "Store x weekday x promo profile": {
       "RMSPE": 0.13467862821225804,
       "sMAPE": 9.772226819507585,
+      "MAPE": 9.855007780336525,
       "MAE": 677.7016554976176,
+      "RMSE": 1021.9971986442591,
+      "MASE": 0.35488492005521743,
       "Bias_%": -1.0283355567238828,
       "train_seconds": 0.1,
       "n_models": 1115
@@ -37,7 +54,10 @@
     "Per-store ridge regression": {
       "RMSPE": 0.1245378468171147,
       "sMAPE": 8.917320268430046,
+      "MAPE": 9.073897390270993,
       "MAE": 622.2624847077251,
+      "RMSE": 931.1006591343837,
+      "MASE": 0.3228615288201189,
       "Bias_%": -0.016862533744100988,
       "train_seconds": 6.8,
       "n_models": 1115
@@ -45,7 +65,10 @@
     "Per-store LightGBM": {
       "RMSPE": 0.11492690312571593,
       "sMAPE": 8.040274585070492,
+      "MAPE": 8.245587310686247,
       "MAE": 555.2965277051256,
+      "RMSE": 832.8504695516543,
+      "MASE": 0.2886664089324372,
       "Bias_%": 0.5017689520842282,
       "train_seconds": 132.2,
       "n_models": 1115
@@ -53,7 +76,10 @@
     "Global LightGBM": {
       "RMSPE": 0.10728511265711616,
       "sMAPE": 7.66116628017342,
+      "MAPE": 7.828745532683095,
       "MAE": 524.7485702385122,
+      "RMSE": 787.9589750284922,
+      "MASE": 0.2744578227723898,
       "Bias_%": 0.43262153991966307,
       "train_seconds": 243.8,
       "n_models": 1
@@ -61,7 +87,10 @@
     "Per-store SARIMAX (ARMA errors)": {
       "RMSPE": 0.13998626511090273,
       "sMAPE": 10.417672399878612,
+      "MAPE": 10.530688057322475,
       "MAE": 740.9300721460523,
+      "RMSE": 1040.6504816997685,
+      "MASE": 0.36865670856400384,
       "Bias_%": -1.154625274108035,
       "train_seconds": 238.7,
       "n_models": 150
@@ -69,6 +98,7 @@
   },
   "fold_mean_RMSPE": {
     "Global LightGBM": 0.09945361406559705,
+    "Naive (last observed day)": 0.37084758905864196,
     "Per-store LightGBM": 0.11641348904631797,
     "Per-store SARIMAX (ARMA errors)": 0.13998626511090273,
     "Per-store ridge regression": 0.11719620322602571,
@@ -480,11 +510,21 @@
       }
     }
   },
+  "correlations": {
+    "Promo day": 0.6769494084785985,
+    "Christmas week (18-23 Dec)": 0.15571198428782912,
+    "Day after a state holiday": 0.07964917951484742,
+    "Day before a state holiday": 0.07037767729833848,
+    "School holiday": 0.05286470596288287,
+    "Competitor open": -0.01648652337784387,
+    "Promo2 coupon month": -0.007335504401343367,
+    "Open on a state holiday": 0.0049896899289771
+  },
   "per_store_global_win_share": 0.6645739910313901,
   "submission": {
     "rows": 41088,
     "n_trees": 2067,
     "mean_sales_open": 6907.679112020146
   },
-  "runtime_minutes": 14.731462284766668
+  "runtime_minutes": 0.16487754524999995
 }

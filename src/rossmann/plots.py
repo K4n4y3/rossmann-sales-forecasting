@@ -27,10 +27,10 @@ GRAY = "#b9b8b0"
 SERIES = [BLUE, ORANGE, AQUA]
 FONT = ["DejaVu Sans"]
 
-MODEL_ORDER = ["Seasonal naive (last same weekday)", "Store x weekday x promo profile",
+MODEL_ORDER = ["Naive (last observed day)", "Seasonal naive (last same weekday)", "Store x weekday x promo profile",
                "Per-store SARIMAX (ARMA errors)", "Per-store ridge regression",
                "Per-store LightGBM", "Global LightGBM"]
-SHORT = {"Seasonal naive (last same weekday)": "Seasonal naive",
+SHORT = {"Naive (last observed day)": "Naive", "Seasonal naive (last same weekday)": "Seasonal naive",
          "Store x weekday x promo profile": "Weekday x promo profile",
          "Per-store SARIMAX (ARMA errors)": "Per-store SARIMAX",
          "Per-store ridge regression": "Per-store ridge",
@@ -371,6 +371,27 @@ def ablation(ab: pd.DataFrame, path):
     return _save(fig, path)
 
 
+def correlation_bars(store_day: pd.DataFrame, path):
+    """Spearman correlation of each external factor with store-demeaned log sales."""
+    style()
+    d = store_day.sort_values("spearman_sales")
+    fig, ax = plt.subplots(figsize=(9.5, 4.4))
+    y = np.arange(len(d))
+    ax.axvline(0, color=AXIS, lw=1)
+    colors = [BLUE if f == "Promo day" else GRAY for f in d["factor"]]
+    ax.barh(y, d["spearman_sales"], height=0.5, color=colors)
+    for yi, v in zip(y, d["spearman_sales"]):
+        ax.text(v + (0.01 if v >= 0 else -0.01), yi, f"{v:+.2f}", va="center",
+                ha="left" if v >= 0 else "right", color=INK, fontsize=10)
+    ax.set_yticks(y, d["factor"])
+    ax.grid(axis="y", visible=False)
+    ax.set_xlim(min(-0.1, d["spearman_sales"].min() - 0.08), d["spearman_sales"].max() + 0.12)
+    ax.set_xlabel("Spearman correlation with daily sales (log, store mean removed)")
+    ax.set_title("Promotions are by far the strongest external driver of sales")
+    _subtitle(ax, "844k open store-days, 2013-2015; holidays and Christmas week follow")
+    return _save(fig, path)
+
+
 # -----------------------------------------------------------------------------
 # interactive (Plotly)
 # -----------------------------------------------------------------------------
@@ -409,6 +430,19 @@ def interactive_holdout(pred: pd.DataFrame, path, stores: list[int],
     fig.update_layout(updatemenus=[dict(buttons=buttons, x=1.0, xanchor="right", y=1.15)])
     _pl_layout(fig, "Hold-out forecast vs actual (20 Jun - 31 Jul 2015)")
     fig.update_yaxes(title="Sales (EUR)")
+    fig.write_html(path, include_plotlyjs="cdn")
+    return path
+
+
+def interactive_correlation_matrix(matrix: pd.DataFrame, path):
+    fig = go.Figure(go.Heatmap(z=matrix.to_numpy(), x=list(matrix.columns), y=list(matrix.index), zmin=-1, zmax=1,
+                               colorscale=[[0, "#d03b3b"], [0.5, "#f0efec"], [1, BLUE]],
+                               text=np.round(matrix.to_numpy(), 2), texttemplate="%{text}",
+                               hovertemplate="%{y} vs %{x}: %{z:.3f}<extra></extra>",
+                               colorbar=dict(title="Spearman")))
+    _pl_layout(fig, "Correlation of sales, customers and external factors (Spearman, open store-days)")
+    fig.update_layout(height=650, hovermode="closest", margin=dict(l=220, b=200))
+    fig.update_yaxes(autorange="reversed")
     fig.write_html(path, include_plotlyjs="cdn")
     return path
 

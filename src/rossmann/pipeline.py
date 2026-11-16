@@ -15,6 +15,8 @@ import json
 import time
 from pathlib import Path
 
+import sqlite3
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -154,6 +156,40 @@ def run_fold(panel: pd.DataFrame, fold: tuple, gap_stores: set, n_jobs: int = -1
     return out
 
 
+NAIVE = "Naive (last observed day)"
+
+
+def complete_fold(f: dict, panel: pd.DataFrame, fold: tuple) -> dict:
+    """Add the naive baseline and the full metric table (MAE, RMSE, MAPE, sMAPE, RMSPE,
+    MASE, bias) to a fold's saved predictions.  Runs after training - also on cached
+    folds - because none of it needs a model to be retrained."""
+    fid, start, label = fold
+    split = M.Split(pd.Timestamp(start))
+    ho = f["pred"].drop(columns=[c for c in f["pred"] if c in (f"pred::{NAIVE}", "mase_scale")])
+    r = M.naive(panel, split)
+    nv = panel.loc[r.pred.index, ["Store", "Date"]].assign(**{f"pred::{NAIVE}": r.pred.to_numpy()})
+    ho = ho.merge(nv, on=["Store", "Date"], how="left")
+    ho["mase_scale"] = ho["Store"].map(M.mase_scale(panel, split.holdout_start))
+
+    old = f["metrics"].set_index("model")
+    models = [NAIVE] + [m for m in old.index if m != NAIVE]
+    rows = []
+    for m in models:
+        sub = ho[ho[f"pred::{m}"].notna()]
+        rows.append({"fold": fid, "fold_label": label, "model": m,
+                     "n_models": int(r.n_models if m == NAIVE else old.loc[m, "n_models"]),
+                     "train_seconds": round(r.train_seconds if m == NAIVE else float(old.loc[m, "train_seconds"]), 1),
+                     "n_eval_days": int((sub["Sales"] > 0).sum()),
+                     **MET.score(sub["Sales"], sub[f"pred::{m}"], sub["mase_scale"])})
+    f["pred"], f["metrics"] = ho, pd.DataFrame(rows)
+    if "sample_metrics" in f:
+        sar = "Per-store SARIMAX (ARMA errors)"
+        sub = ho[ho[f"pred::{sar}"].notna()]
+        f["sample_metrics"] = pd.DataFrame([{"model": m, **MET.score(sub["Sales"], sub[f"pred::{m}"], sub["mase_scale"])}
+                                            for m in models])
+    return f
+
+
 def run_effects(panel: pd.DataFrame) -> dict:
     log("effects: descriptive + fixed-effects regressions")
     known = panel[panel["is_test"] == 0]
@@ -176,6 +212,67 @@ def run_effects(panel: pd.DataFrame) -> dict:
     _, f_ass, _ = E.fe_ols(known, interactions="assortment")
     out["promo_by_assortment"] = E.interaction_effects(f_ass, "Promo", "Promo x assortment ", "a")
     return out
+
+
+MODEL_COLS = {
+    "Naive (last observed day)": "naive", "Seasonal naive (last same weekday)": "seasonal_naive",
+    "Store x weekday x promo profile": "profile", "Per-store ridge regression": "ridge_per_store",
+    "Per-store LightGBM": "lgbm_per_store", "Global LightGBM": "lgbm_global",
+    "Per-store SARIMAX (ARMA errors)": "sarimax_per_store", "Global LightGBM (corrected)": "lgbm_global_corrected",
+    "Without promo features": "lgbm_global_no_promo", "Without holiday features": "lgbm_global_no_holiday",
+}
+
+
+def export_sqlite(path: Path, folds_out: list[dict], eff: dict | None, corr: dict | None,
+                  store: pd.DataFrame, panel: pd.DataFrame, sub: pd.DataFrame | None) -> Path:
+    """All results in one SQLite file - the data source of the Streamlit dashboard."""
+    path.unlink(missing_ok=True)
+    pred = pd.concat([f["pred"] for f in folds_out], ignore_index=True)
+    pred = pred.rename(columns={f"pred::{k}": v for k, v in MODEL_COLS.items()})
+    pred = pred.merge(store[["Store", "Assortment"]].astype({"Assortment": str}), on="Store", how="left")
+    pred["Date"] = pred["Date"].dt.strftime("%Y-%m-%d")
+    for c in MODEL_COLS.values():
+        if c in pred:
+            pred[c] = pred[c].round(1)
+    tables = {
+        "predictions": pred,
+        "models": pd.DataFrame({"model": list(MODEL_COLS), "column": list(MODEL_COLS.values())}),
+        "metrics": pd.concat([f["metrics"] for f in folds_out], ignore_index=True),
+        "stores": store.astype({c: str for c in ["StoreType", "Assortment", "PromoInterval"]}).astype(
+            {c: "float64" for c in ["CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2SinceWeek",
+                                    "Promo2SinceYear"]}),
+    }
+    f1 = folds_out[0]
+    for k in ["per_store", "by_week", "segments", "importance", "shap_groups", "sample_metrics"]:
+        if k in f1:
+            tables[k] = f1[k]
+    for f in folds_out:
+        if "ablation" in f:
+            tables["ablation"] = f["ablation"]
+    if eff:
+        tables["effects"] = eff["fe_main_full"].reset_index(names="term")
+        tables["promo_by_weekday"] = eff["promo_by_weekday"]
+        tables["promo_by_storetype"] = eff["promo_by_storetype"]
+        tables["promo_by_assortment"] = eff["promo_by_assortment"]
+    if corr:
+        tables["correlations_store_day"] = corr["store_day"]
+        tables["correlations_store_level"] = corr["store_level"]
+        tables["correlation_matrix"] = corr["matrix"].stack().rename("spearman").rename_axis(
+            ["factor_1", "factor_2"]).reset_index()
+    if sub is not None:
+        te = panel.loc[panel["is_test"] == 1, ["Id", "Store", "Date", "Open", "Promo", "StateHoliday_code",
+                                                 "SchoolHoliday", "StoreType"]].copy()
+        te["Id"] = te["Id"].astype(int)
+        te = te.merge(sub.rename(columns={"Sales": "forecast"}), on="Id")
+        te["Date"] = te["Date"].dt.strftime("%Y-%m-%d")
+        te["StoreType"] = te["StoreType"].astype(str)
+        te["forecast"] = te["forecast"].round(1)
+        tables["kaggle_forecast"] = te
+    with sqlite3.connect(path) as con:
+        for name, df in tables.items():
+            df.to_sql(name, con, index=False)
+        con.execute("CREATE INDEX idx_pred ON predictions(fold, Store, Date)")
+    return path
 
 
 def make_submission(panel: pd.DataFrame, n_trees: int, raw_dir: Path) -> pd.DataFrame:
@@ -314,6 +411,9 @@ def main(argv=None):
         folds_out.append(res_fold)
         gc.collect()
 
+    folds_out = [complete_fold(f, panel, fold) for f, fold in zip(folds_out, FOLDS)]
+    log("naive baseline and metric table (MAE, RMSE, MAPE, sMAPE, RMSPE, MASE) added")
+
     eff = None
     if not a.no_effects:
         ce = cache / f"{tag}_effects.joblib"
@@ -328,8 +428,8 @@ def main(argv=None):
         "data": data.summary(clean),
         "holdout": {"start": str(config.HOLDOUT_START.date()), "end": str(config.LAST_TRAIN_DATE.date()),
                     "days": config.HOLDOUT_DAYS},
-        "metrics_F1": f1["metrics"].set_index("model")[["RMSPE", "sMAPE", "MAE", "Bias_%", "train_seconds",
-                                                         "n_models"]].to_dict("index"),
+        "metrics_F1": f1["metrics"].set_index("model")[["RMSPE", "sMAPE", "MAPE", "MAE", "RMSE", "MASE", "Bias_%",
+                                                         "train_seconds", "n_models"]].to_dict("index"),
         "fold_mean_RMSPE": pd.concat([f["metrics"] for f in folds_out]).groupby("model")["RMSPE"].mean().to_dict(),
         "global_info": f1["info"]["global"], "per_store_lgb_info": f1["info"]["per_store_lgb"],
         "global_corrected_holdout": f1["info"]["global_corrected_holdout"],
@@ -341,16 +441,33 @@ def main(argv=None):
         res["effects"] = {"meta": eff["fe_meta"], "promo_decomposition": eff["promo_decomposition"],
                           "main": eff["fe_main"][["effect_pct", "ci_low_pct", "ci_high_pct", "p"]].to_dict("index")}
 
+    log("correlation analysis with external factors")
+    corr = E.correlations(F.add_store_stats(panel, panel["is_test"] == 0))
+    res["correlations"] = corr["store_day"].set_index("factor")["spearman_sales"].to_dict()
+
     ex = [s for s in [551, 613, 262] if s in set(panel.Store)][:3] or list(panel.Store.unique()[:3])
     res["per_store_global_win_share"] = make_figures(panel, clean, folds_out, eff, ex)
+    P.correlation_bars(corr["store_day"], config.FIG_DIR / "fig14_correlations.png")
+    P.interactive_correlation_matrix(corr["matrix"], config.FIG_DIR / "interactive_correlations.html")
 
+    sub = None
     if not a.no_submission and not a.quick:
         n_trees = int(round(f1["info"]["global"]["best_iter"] * 1.1))
-        sub = make_submission(panel, n_trees, a.raw_dir)
+        cs = cache / f"{tag}_submission.joblib"
+        if cs.exists() and not a.rerun:
+            log("submission: loaded from cache")
+            sub = joblib.load(cs)
+        else:
+            sub = make_submission(panel, n_trees, a.raw_dir)
+            joblib.dump(sub, cs)
         sub.to_csv(config.OUT_DIR / "submission.csv", index=False)
         res["submission"] = {"rows": len(sub), "n_trees": n_trees, "mean_sales_open": float(sub.loc[sub.Sales > 0, "Sales"].mean())}
     res["runtime_minutes"] = (time.perf_counter() - t0) / 60
     save_all(res, eff, folds_out)
+    for k, v in corr.items():
+        v.to_csv(config.MET_DIR / f"correlations_{k}.csv", index=(k == "matrix"))
+    db = export_sqlite(config.OUT_DIR / "rossmann_results.sqlite", folds_out, eff, corr, store, panel, sub)
+    log(f"results saved to {db.name} ({db.stat().st_size / 1e6:.1f} MB) and parquet")
     log(f"done in {res['runtime_minutes']:.1f} min")
     return res
 

@@ -1,0 +1,7 @@
+factor,spearman_mean_sales,n_stores
+Log distance to nearest competitor,-0.027977173881883897,1115
+Months since competitor opened,-0.07361283259703774,761
+Takes part in Promo2,-0.14641171624104926,1115
+Extended assortment (c),0.15811915167497176,1115
+Store type b,0.09716798402440191,1115
+Share of Sundays open,0.06545394991568111,1115

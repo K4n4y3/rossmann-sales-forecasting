@@ -76,6 +76,26 @@ def _closed_to_zero(p_rows: pd.DataFrame, pred: np.ndarray) -> np.ndarray:
 # -----------------------------------------------------------------------------
 # Baselines
 # -----------------------------------------------------------------------------
+def naive(p: pd.DataFrame, split: Split) -> Result:
+    """Naive forecast: the last observed open-day sales of each store, repeated."""
+    t0 = time.perf_counter()
+    m = split.masks(p)
+    hist = p.loc[trainable(p, m["train"]), ["Store", "Date", "Sales"]]
+    last = hist.sort_values("Date").groupby("Store")["Sales"].last()
+    ho = p.loc[m["holdout"], ["Store", "Open"]]
+    pred = ho["Store"].map(last).to_numpy(dtype="float64")
+    return Result("Naive (last observed day)", pd.Series(_closed_to_zero(ho, pred), index=ho.index),
+                  time.perf_counter() - t0, p["Store"].nunique())
+
+
+def mase_scale(p: pd.DataFrame, end: pd.Timestamp) -> pd.Series:
+    """Per store: in-sample MAE of the lag-7 seasonal-naive forecast on open days before ``end``."""
+    tr = p[(p["is_test"] == 0) & (p["Date"] < end) & (p["Open"] == 1) & (p["Sales"] > 0)]
+    s = tr.pivot(index="Date", columns="Store", values="Sales")
+    s = s.reindex(pd.date_range(s.index.min(), s.index.max(), freq="D"))
+    return s.diff(7).abs().mean().rename("mase_scale")
+
+
 def seasonal_naive(p: pd.DataFrame, split: Split) -> Result:
     """Last observed open-day sales of the same store and weekday (lag-7 logic)."""
     t0 = time.perf_counter()

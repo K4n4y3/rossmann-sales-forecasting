@@ -209,3 +209,76 @@ def shap_groups(booster, X: pd.DataFrame, groups: dict[str, list[str]], n: int =
         if idx:
             rows.append({"group": g, "mean_abs_contrib": float(np.abs(contrib[:, idx].sum(1)).mean())})
     return pd.DataFrame(rows).sort_values("mean_abs_contrib", ascending=False)
+
+
+# -----------------------------------------------------------------------------
+# 4. correlation analysis with external factors
+# -----------------------------------------------------------------------------
+CORR_FACTORS = {
+    "Promo": "Promo day",
+    "SchoolHoliday": "School holiday",
+    "hol_before": "Day before a state holiday",
+    "hol_after": "Day after a state holiday",
+    "open_holiday": "Open on a state holiday",
+    "xmas_week": "Christmas week (18-23 Dec)",
+    "is_promo2_month": "Promo2 coupon month",
+    "comp_active": "Competitor open",
+}
+
+
+def correlations(p: pd.DataFrame, sample: int = 300_000, seed: int = 42) -> dict:
+    """Correlation of sales with external (calendar, holiday, promo, competition) factors.
+
+    * ``store_day``: Spearman correlation between each factor and the store-demeaned
+      log sales of open days (removes store size, which would otherwise dominate),
+      also after removing the store x weekday mean.
+    * ``matrix``: Spearman matrix of sales, customers and all factors (sample of days).
+    * ``store_level``: cross-section of 1,115 stores - mean sales vs competition
+      distance, competitor age, Promo2, assortment, Sunday opening.
+    """
+    o = _open_days(p.assign(**{c: p[c] for c in ["store_mean_log"] if c in p}))
+    for c in ["comp_active"]:
+        if c in p:
+            o[c] = p.loc[o.index, c]
+    o["log_sales"] = np.log(o["Sales"])
+    o["log_cust"] = np.log(o["Customers"].clip(lower=1))
+    g = o["Store"].to_numpy()
+    o["sales_dev"] = o["log_sales"] - o.groupby(g)["log_sales"].transform("mean")
+    o["cust_dev"] = o["log_cust"] - o.groupby(g)["log_cust"].transform("mean")
+    o["sales_dev_dow"] = o["log_sales"] - o.groupby([g, o["DayOfWeek"].to_numpy()])["log_sales"].transform("mean")
+    o["hol_before"] = (o["days_to_holiday"] == 1).astype(int)
+    o["hol_after"] = (o["days_since_holiday"] == 1).astype(int)
+    o["open_holiday"] = (o["StateHoliday_code"] > 0).astype(int)
+    o["xmas_week"] = o["days_to_christmas"].between(2, 7).astype(int)
+    factors = [f for f in CORR_FACTORS if f in o]
+
+    rows = []
+    for f in factors:
+        rows.append({"factor": CORR_FACTORS[f], "share_of_days_pct": 100 * float(o[f].mean()),
+                     "spearman_sales": float(o[f].corr(o["sales_dev"], method="spearman")),
+                     "spearman_sales_within_weekday": float(o[f].corr(o["sales_dev_dow"], method="spearman")),
+                     "spearman_customers": float(o[f].corr(o["cust_dev"], method="spearman"))})
+    store_day = pd.DataFrame(rows).sort_values("spearman_sales", key=np.abs, ascending=False)
+
+    smp = o.sample(min(sample, len(o)), random_state=seed)
+    cols = ["sales_dev", "cust_dev"] + factors
+    matrix = smp[cols].corr(method="spearman")
+    names = {"sales_dev": "Sales (vs store mean)", "cust_dev": "Customers (vs store mean)", **CORR_FACTORS}
+    matrix.index = [names[c] for c in matrix.index]
+    matrix.columns = [names[c] for c in matrix.columns]
+
+    known = p[p["is_test"] == 0]
+    st = known[(known["Open"] == 1) & (known["Sales"] > 0)].groupby("Store").agg(
+        mean_sales=("Sales", "mean"), log_comp_distance=("log_comp_distance", "first"),
+        comp_open_months=("comp_open_months", "first"), Promo2=("Promo2", "first"),
+        store_type=("StoreType", "first"), assortment=("Assortment", "first"))
+    sun = known[known["DayOfWeek"] == 7].groupby("Store")["Open"].mean()
+    st["sunday_open_share"] = sun
+    st["assortment_extended"] = (st["assortment"].astype(str) == "c").astype(int)
+    st["type_b"] = (st["store_type"].astype(str) == "b").astype(int)
+    lv = {"log_comp_distance": "Log distance to nearest competitor", "comp_open_months": "Months since competitor opened",
+          "Promo2": "Takes part in Promo2", "assortment_extended": "Extended assortment (c)",
+          "type_b": "Store type b", "sunday_open_share": "Share of Sundays open"}
+    store_level = pd.DataFrame([{"factor": name, "spearman_mean_sales": float(st[c].corr(st["mean_sales"], method="spearman")),
+                                 "n_stores": int(st[c].notna().sum())} for c, name in lv.items()])
+    return {"store_day": store_day, "matrix": matrix, "store_level": store_level}
